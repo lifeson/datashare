@@ -1,0 +1,24 @@
+# Dépendances
+node_modules/
+
+# Builds
+dist/
+/frontend/.angular/
+/frontend/dist/
+
+# Tests
+coverage/
+
+# Environnement
+.env
+*.local
+
+# Fichiers téléversés
+/storage/*
+!/storage/.gitkeep
+
+# OS / éditeur
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
