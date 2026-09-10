@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
@@ -77,6 +78,18 @@ export class FilesController {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.filesService.listForUser(user.userId, query.status);
+  }
+
+  /** US06 — Supprime un fichier de l'utilisateur connecté. */
+  @Delete(':id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  async remove(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<void> {
+    await this.filesService.deleteForUser(user.userId, id);
   }
 
   /** US02 — Métadonnées publiques d'un fichier. */

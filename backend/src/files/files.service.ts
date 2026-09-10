@@ -1,4 +1,5 @@
 import {
+  ForbiddenException,
   GoneException,
   Injectable,
   NotFoundException,
@@ -6,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import * as bcrypt from 'bcrypt';
 import { nanoid } from 'nanoid';
 import {
@@ -214,5 +215,23 @@ export class FilesService {
       .exec();
 
     return { items: docs.map((doc) => this.toView(doc)), count: docs.length };
+  }
+
+  /** US06 — Supprime définitivement un fichier de l'utilisateur (disque + document). */
+  async deleteForUser(ownerId: string, fileId: string): Promise<void> {
+    if (!Types.ObjectId.isValid(fileId)) {
+      throw new NotFoundException('Fichier introuvable.');
+    }
+
+    const file = await this.fileModel.findById(fileId).exec();
+    if (!file) {
+      throw new NotFoundException('Fichier introuvable.');
+    }
+    if (file.owner.toString() !== ownerId) {
+      throw new ForbiddenException("Ce fichier ne t'appartient pas.");
+    }
+
+    await this.storage.remove(file.storageKey);
+    await this.fileModel.deleteOne({ _id: file._id }).exec();
   }
 }
