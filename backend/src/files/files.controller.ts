@@ -7,6 +7,7 @@ import {
   HttpStatus,
   Param,
   Post,
+  Query,
   StreamableFile,
   UseFilters,
   UseGuards,
@@ -19,6 +20,7 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import type { AuthenticatedUser } from '../auth/strategies/jwt.strategy';
 import { DownloadDto } from './dto/download.dto';
+import { ListFilesQueryDto } from './dto/list-files.query';
 import { UploadFileDto } from './dto/upload-file.dto';
 import { MulterExceptionFilter } from './filters/multer-exception.filter';
 import { CleanupUploadOnErrorInterceptor } from './interceptors/cleanup-upload-on-error.interceptor';
@@ -64,6 +66,17 @@ export class FilesController {
       password: dto.password,
       expiresInDays: dto.expiresInDays,
     });
+  }
+
+  /** US05 — Liste des fichiers de l'utilisateur connecté. */
+  @Get()
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  list(
+    @Query() query: ListFilesQueryDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.filesService.listForUser(user.userId, query.status);
   }
 
   /** US02 — Métadonnées publiques d'un fichier. */

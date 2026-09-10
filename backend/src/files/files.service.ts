@@ -190,4 +190,29 @@ export class FilesService {
       size: file.size,
     };
   }
+
+  /** US05 — Fichiers de l'utilisateur, filtrés par statut, du plus récent au plus ancien. */
+  async listForUser(
+    ownerId: string,
+    status: 'all' | 'active' | 'expired',
+  ): Promise<{ items: FileItemView[]; count: number }> {
+    const now = new Date();
+
+    let filter: Record<string, unknown> = { owner: ownerId };
+    if (status === 'active') {
+      filter = { owner: ownerId, status: 'active', expiresAt: { $gt: now } };
+    } else if (status === 'expired') {
+      filter = {
+        owner: ownerId,
+        $or: [{ status: 'expired' }, { expiresAt: { $lte: now } }],
+      };
+    }
+
+    const docs = await this.fileModel
+      .find(filter)
+      .sort({ createdAt: -1 })
+      .exec();
+
+    return { items: docs.map((doc) => this.toView(doc)), count: docs.length };
+  }
 }
