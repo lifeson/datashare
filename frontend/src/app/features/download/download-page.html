@@ -1,0 +1,66 @@
+@let m = meta();
+
+<section class="download">
+  <div class="card">
+    <h1 class="card__title">Télécharger un fichier</h1>
+
+    @switch (state()) {
+      @case ('loading') {
+        <p class="muted">Chargement…</p>
+      }
+      @case ('not-found') {
+        <p class="banner banner--error">Lien invalide.</p>
+      }
+      @case ('gone') {
+        <p class="banner banner--error">
+          Ce fichier n'est plus disponible en téléchargement car il a expiré.
+        </p>
+      }
+      @case ('ready') {
+        <div class="file-row">
+          <span class="file-row__icon" aria-hidden="true">📄</span>
+          <div class="file-row__info">
+            <span class="file-row__name">{{ m!.originalName }}</span>
+            <span class="file-row__size">{{ formatSize(m!.size) }}</span>
+          </div>
+        </div>
+
+        @if (hint(); as h) {
+          <p
+            class="banner"
+            [class.banner--info]="h.tone === 'info'"
+            [class.banner--warn]="h.tone === 'warn'"
+          >
+            {{ h.text }}
+          </p>
+        }
+
+        <form [formGroup]="form" (ngSubmit)="download()">
+          @if (m!.isProtected) {
+            <label class="field">
+              <span class="field__label">Mot de passe</span>
+              <input
+                type="password"
+                formControlName="password"
+                placeholder="Saisissez le mot de passe…"
+                autocomplete="off"
+              />
+            </label>
+          }
+
+          @if (error()) {
+            <p class="field-error">{{ error() }}</p>
+          }
+
+          <button
+            type="submit"
+            class="btn btn--primary btn--block"
+            [disabled]="form.invalid || downloading()"
+          >
+            {{ downloading() ? 'Téléchargement…' : 'Télécharger' }}
+          </button>
+        </form>
+      }
+    }
+  </div>
+</section>

@@ -17,9 +17,17 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
     ? req.clone({ setHeaders: { Authorization: `Bearer ${token}` } })
     : req;
 
+  // Les routes publiques de téléchargement renvoient 401 pour « mot de passe
+  // du fichier incorrect » — ce n'est pas une session expirée.
+  const isPublicFileRoute = /\/api\/files\/[^/]+(\/download)?$/.test(req.url);
+
   return next(authReq).pipe(
     catchError((error: HttpErrorResponse) => {
-      if (error.status === 401 && auth.isAuthenticated()) {
+      if (
+        error.status === 401 &&
+        auth.isAuthenticated() &&
+        !isPublicFileRoute
+      ) {
         auth.logout();
         void router.navigate(['/auth']);
       }
