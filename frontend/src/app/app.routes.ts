@@ -1,10 +1,19 @@
 import { Routes } from '@angular/router';
+import { authGuard } from './core/auth/auth.guard';
 
 export const routes: Routes = [
   {
     path: '',
+    canActivate: [authGuard],
     // US01 — écran « Ajouter un fichier »
-    // TODO (guide auth) : protéger par le `authGuard` une fois l'authentification en place
-    loadComponent: () => import('./features/upload/upload-page').then((m) => m.UploadPage),
+    loadComponent: () =>
+      import('./features/upload/upload-page').then((m) => m.UploadPage),
   },
+  {
+    path: 'auth',
+    // US03 / US04 — Connexion et Créer un compte
+    loadComponent: () =>
+      import('./features/auth/auth-page').then((m) => m.AuthPage),
+  },
+  { path: '**', redirectTo: '' },
 ];

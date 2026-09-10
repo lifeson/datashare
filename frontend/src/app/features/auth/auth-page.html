@@ -1,0 +1,74 @@
+<section class="auth">
+  <form class="card" [formGroup]="form" (ngSubmit)="submit()">
+    <h1 class="card__title">
+      {{ isRegister() ? 'Créer un compte' : 'Connexion' }}
+    </h1>
+
+    <label class="field">
+      <span class="field__label">Email</span>
+      <input
+        type="email"
+        formControlName="email"
+        placeholder="Saisissez votre email…"
+        autocomplete="email"
+      />
+      @if (form.controls.email.touched && form.controls.email.invalid) {
+        <span class="field-error">Adresse email invalide.</span>
+      }
+    </label>
+
+    <label class="field">
+      <span class="field__label">Mot de passe</span>
+      <input
+        type="password"
+        formControlName="password"
+        placeholder="Saisissez votre mot de passe…"
+        [autocomplete]="isRegister() ? 'new-password' : 'current-password'"
+      />
+      @if (form.controls.password.touched && form.controls.password.errors?.['minlength']) {
+        <span class="field-error">Au moins 8 caractères.</span>
+      }
+    </label>
+
+    @if (isRegister()) {
+      <label class="field">
+        <span class="field__label">Vérification du mot de passe</span>
+        <input
+          type="password"
+          formControlName="passwordConfirm"
+          placeholder="Saisissez-le à nouveau"
+          autocomplete="new-password"
+        />
+        @if (form.errors?.['passwordsMismatch'] && form.controls.passwordConfirm.touched) {
+          <span class="field-error">Les mots de passe ne correspondent pas.</span>
+        }
+      </label>
+    }
+
+    @if (serverError()) {
+      <p class="field-error">{{ serverError() }}</p>
+    }
+
+    @if (isRegister()) {
+      <button type="button" class="link" (click)="switchMode('login')">
+        J'ai déjà un compte
+      </button>
+    } @else {
+      <button type="button" class="link" (click)="switchMode('register')">
+        Créer un compte
+      </button>
+    }
+
+    <button
+      type="submit"
+      class="btn btn--primary btn--block"
+      [disabled]="form.invalid || submitting()"
+    >
+      @if (submitting()) {
+        Veuillez patienter…
+      } @else {
+        {{ isRegister() ? 'Créer mon compte' : 'Connexion' }}
+      }
+    </button>
+  </form>
+</section>
