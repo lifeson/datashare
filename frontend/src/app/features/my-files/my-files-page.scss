@@ -145,3 +145,12 @@
   color: var(--ds-accent-strong);
   border: 1px solid var(--ds-accent-soft);
 }
+
+.btn--danger {
+  background: #fde8e6;
+  color: var(--ds-danger);
+
+  &:hover:not(:disabled) {
+    background: #fbd9d5;
+  }
+}

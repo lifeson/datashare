@@ -44,18 +44,22 @@
 
             <div class="row__actions">
               @if (b.expired) {
-                <span class="row__gone"
-                  >Ce fichier a expiré, il n'est plus stocké chez nous</span
+                <span class="row__gone">Ce fichier a expiré, il n'est plus stocké chez nous</span>
+              } @else {
+                <button
+                  type="button"
+                  class="btn btn--danger"
+                  [disabled]="deletingId() === item.id"
+                  (click)="remove(item)"
                 >
-              } @else if (item.downloadToken) {
-                <a
-                  class="btn btn--ghost"
-                  [routerLink]="['/d', item.downloadToken]"
-                >
-                  Accéder →
-                </a>
+                  {{ deletingId() === item.id ? '…' : 'Supprimer' }}
+                </button>
+                @if (item.downloadToken) {
+                  <a class="btn btn--ghost" [routerLink]="['/d', item.downloadToken]">
+                    Accéder →
+                  </a>
+                }
               }
-              <!-- US06 : bouton « Supprimer » ici -->
             </div>
           </li>
         }

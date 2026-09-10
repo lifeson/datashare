@@ -50,4 +50,9 @@ export class FilesApiService {
       params: { status },
     });
   }
+
+  /** US06 — Supprime un fichier de l'utilisateur. */
+  remove(id: string): Observable<void> {
+    return this.http.delete<void>(`/api/files/${id}`);
+  }
 }

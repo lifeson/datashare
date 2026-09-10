@@ -26,6 +26,7 @@ export class MyFilesPage {
   protected readonly items = signal<FileItem[]>([]);
   protected readonly loading = signal(true);
   protected readonly error = signal<string | null>(null);
+  protected readonly deletingId = signal<string | null>(null);
 
   protected readonly badge = expiryBadge;
   protected readonly formatSize = formatFileSize;
@@ -53,6 +54,26 @@ export class MyFilesPage {
       error: () => {
         this.error.set('Impossible de charger tes fichiers.');
         this.loading.set(false);
+      },
+    });
+  }
+
+  remove(item: FileItem): void {
+    const ok = window.confirm(
+      `Supprimer définitivement « ${item.originalName} » ? Cette action est irréversible.`,
+    );
+    if (!ok || this.deletingId()) {
+      return;
+    }
+    this.deletingId.set(item.id);
+    this.filesApi.remove(item.id).subscribe({
+      next: () => {
+        this.deletingId.set(null);
+        this.load(); // recharge l'onglet courant
+      },
+      error: () => {
+        this.deletingId.set(null);
+        this.error.set('La suppression a échoué.');
       },
     });
   }
