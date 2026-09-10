@@ -1,0 +1,65 @@
+<section class="my-files">
+  <div class="card">
+    <header class="card__head">
+      <h1 class="card__title">Mes fichiers</h1>
+      <a routerLink="/" class="btn btn--primary">Ajouter des fichiers</a>
+    </header>
+
+    <nav class="tabs">
+      @for (t of tabs; track t.id) {
+        <button
+          type="button"
+          class="tabs__tab"
+          [class.tabs__tab--active]="tab() === t.id"
+          (click)="selectTab(t.id)"
+        >
+          {{ t.label }}
+        </button>
+      }
+    </nav>
+
+    @if (loading()) {
+      <p class="muted">Chargement…</p>
+    } @else if (error()) {
+      <p class="banner banner--error">{{ error() }}</p>
+    } @else if (items().length === 0) {
+      <p class="muted">Aucun fichier dans cet onglet.</p>
+    } @else {
+      <ul class="list">
+        @for (item of items(); track item.id) {
+          @let b = badge(item);
+          <li class="row">
+            <span class="row__icon" aria-hidden="true">📄</span>
+
+            <div class="row__info">
+              <span class="row__name">{{ item.originalName }}</span>
+              <span class="row__meta" [class.row__meta--expired]="b.expired">
+                {{ b.text }} · {{ formatSize(item.size) }}
+              </span>
+            </div>
+
+            @if (item.isProtected) {
+              <span class="row__lock" title="Protégé par mot de passe">🔒</span>
+            }
+
+            <div class="row__actions">
+              @if (b.expired) {
+                <span class="row__gone"
+                  >Ce fichier a expiré, il n'est plus stocké chez nous</span
+                >
+              } @else if (item.downloadToken) {
+                <a
+                  class="btn btn--ghost"
+                  [routerLink]="['/d', item.downloadToken]"
+                >
+                  Accéder →
+                </a>
+              }
+              <!-- US06 : bouton « Supprimer » ici -->
+            </div>
+          </li>
+        }
+      </ul>
+    }
+  </div>
+</section>

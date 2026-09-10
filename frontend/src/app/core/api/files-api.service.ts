@@ -1,4 +1,4 @@
-import { HttpClient, HttpResponse  } from '@angular/common/http';
+import { HttpClient, HttpResponse } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { FileItem } from '../models/file-item.model';
@@ -40,5 +40,14 @@ export class FilesApiService {
       { password: password ?? undefined },
       { responseType: 'blob', observe: 'response' },
     );
+  }
+
+  /** US05 — Liste des fichiers de l'utilisateur (filtrée par onglet). */
+  list(
+    status: 'all' | 'active' | 'expired',
+  ): Observable<{ items: FileItem[]; count: number }> {
+    return this.http.get<{ items: FileItem[]; count: number }>('/api/files', {
+      params: { status },
+    });
   }
 }

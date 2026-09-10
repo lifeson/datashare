@@ -14,6 +14,13 @@ export const routes: Routes = [
       import('./features/auth/auth-page').then((m) => m.AuthPage),
   },
   {
+    path: 'mes-fichiers',
+    canActivate: [authGuard],
+    // US05 — historique de l'utilisateur
+    loadComponent: () =>
+      import('./features/my-files/my-files-page').then((m) => m.MyFilesPage),
+  },
+  {
     path: 'd/:token',
     // US02 — page publique de téléchargement (pas de garde)
     loadComponent: () =>
