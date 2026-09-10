@@ -107,6 +107,13 @@ npm run test:watch    # mode continu
 | `files/files.service.spec.ts` | `listForUser` : `status=all` → filtre `{ owner }` + tri `createdAt: -1` · `status=active` → `status: 'active'` + `expiresAt.$gt` · `status=expired` → `$or` tombstone / date dépassée | Filtres de l'historique (back) |
 | `features/my-files/my-files-page.spec.ts` | Chargement de l'onglet « Tous » au démarrage · lien « Accéder » sur un fichier actif · message « n'est plus stocké chez nous » sur un fichier expiré (pas de lien) · rechargement au changement d'onglet · état vide | Écran « Mes fichiers » (front) |
 
+### US06 — Suppression d'un fichier
+
+| Fichier | Cas de test | Vérifie |
+|---|---|---|
+| `files/files.service.spec.ts` | `deleteForUser` : supprime le fichier disque **puis** le document pour le propriétaire · `404` id mal formé · `404` fichier absent · `403` si non-propriétaire (sans `deleteOne`) | Suppression sécurisée (back) |
+| `features/my-files/my-files-page.spec.ts` | clic « Supprimer » + confirmation → appel `remove()` + rechargement · confirmation annulée → aucun appel | Bouton Supprimer (front) |
+
 ### US01 / US03 / US04 — Front-end (Angular)
 
 | Fichier | Cas de test | Vérifie |
@@ -118,7 +125,7 @@ npm run test:watch    # mode continu
 
 ## 5. Couverture actuelle
 
-- **Back-end** : `npm run test:cov` — 44 tests, 6 suites. `auth.service.ts`, `jwt.strategy.ts` et `files.service.ts` à ~100 %, `storage.service.ts` ~86 %.
-- **Front-end** : `npm test` — 30 tests, 7 suites (Vitest).
+- **Back-end** : `npm run test:cov` — 48 tests, 6 suites. `auth.service.ts`, `jwt.strategy.ts` et `files.service.ts` à ~100 %, `storage.service.ts` ~86 %.
+- **Front-end** : `npm test` — 32 tests, 7 suites (Vitest).
 
 Les contrôleurs, modules, guards et décorateurs (back), ainsi que l'intégration front↔back, seront couverts par les **tests d'intégration (Supertest)** et **e2e (Cypress)** à l'étape 5. Objectif global 70 % visé à ce moment-là.

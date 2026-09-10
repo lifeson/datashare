@@ -78,4 +78,45 @@ describe('MyFilesPage', () => {
 
     expect(el(fixture).textContent).toContain('Aucun fichier');
   });
+
+  it('supprime un fichier après confirmation et recharge la liste', () => {
+    const list = vi.fn().mockReturnValue(of({ items: [item()], count: 1 }));
+    const remove = vi.fn().mockReturnValue(of(undefined));
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+
+    TestBed.configureTestingModule({
+      imports: [MyFilesPage],
+      providers: [{ provide: FilesApiService, useValue: { list, remove } }, provideRouter([])],
+    });
+    const fixture = TestBed.createComponent(MyFilesPage);
+    fixture.detectChanges();
+
+    const btn = [...(fixture.nativeElement as HTMLElement).querySelectorAll('button')].find((b) =>
+      b.textContent?.includes('Supprimer'),
+    );
+    btn?.dispatchEvent(new Event('click'));
+    fixture.detectChanges();
+
+    expect(remove).toHaveBeenCalledWith('1');
+    expect(list).toHaveBeenCalledTimes(2); // chargement initial + rechargement
+  });
+
+  it('ne supprime rien si la confirmation est annulée', () => {
+    const list = vi.fn().mockReturnValue(of({ items: [item()], count: 1 }));
+    const remove = vi.fn();
+    vi.spyOn(window, 'confirm').mockReturnValue(false);
+
+    TestBed.configureTestingModule({
+      imports: [MyFilesPage],
+      providers: [{ provide: FilesApiService, useValue: { list, remove } }, provideRouter([])],
+    });
+    const fixture = TestBed.createComponent(MyFilesPage);
+    fixture.detectChanges();
+
+    [...(fixture.nativeElement as HTMLElement).querySelectorAll('button')]
+      .find((b) => b.textContent?.includes('Supprimer'))
+      ?.dispatchEvent(new Event('click'));
+
+    expect(remove).not.toHaveBeenCalled();
+  });
 });

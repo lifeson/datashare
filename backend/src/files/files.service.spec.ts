@@ -1,6 +1,7 @@
 import { Readable } from 'node:stream';
 import { Test, TestingModule } from '@nestjs/testing';
 import {
+  ForbiddenException,
   GoneException,
   NotFoundException,
   UnauthorizedException,
@@ -40,8 +41,10 @@ describe('FilesService', () => {
     }),
     {
       find: jest.fn(),
+      findById: jest.fn(),
       findOne: jest.fn(),
       updateOne: jest.fn(),
+      deleteOne: jest.fn(),
     },
   );
 
@@ -376,6 +379,47 @@ describe('FilesService', () => {
         { status: 'expired' },
         { expiresAt: expect.any(Object) as unknown },
       ]);
+    });
+  });
+
+  describe('deleteForUser (US06)', () => {
+    const oid = new Types.ObjectId();
+
+    it('supprime le fichier disque puis le document pour le propriétaire', async () => {
+      FileModel.findById.mockReturnValue(
+        asQuery(
+          makeFileDoc({ _id: oid, owner: { toString: () => 'owner-1' } }),
+        ),
+      );
+      FileModel.deleteOne.mockReturnValue(asQuery({ deletedCount: 1 }));
+
+      await service.deleteForUser('owner-1', oid.toHexString());
+
+      expect(storage.remove).toHaveBeenCalledWith('uuid-1');
+      expect(FileModel.deleteOne).toHaveBeenCalledWith({ _id: oid });
+    });
+
+    it("lève 404 si l'id est mal formé", async () => {
+      await expect(
+        service.deleteForUser('owner-1', 'pas-un-id'),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it("lève 404 si le fichier n'existe pas", async () => {
+      FileModel.findById.mockReturnValue(asQuery(null));
+      await expect(
+        service.deleteForUser('owner-1', oid.toHexString()),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it('lève 403 si le fichier appartient à un autre utilisateur', async () => {
+      FileModel.findById.mockReturnValue(
+        asQuery(makeFileDoc({ owner: { toString: () => 'autre' } })),
+      );
+      await expect(
+        service.deleteForUser('owner-1', oid.toHexString()),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+      expect(FileModel.deleteOne).not.toHaveBeenCalled();
     });
   });
 });
