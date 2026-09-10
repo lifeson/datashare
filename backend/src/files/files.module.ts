@@ -13,6 +13,7 @@ import { CleanupUploadOnErrorInterceptor } from './interceptors/cleanup-upload-o
 import { StoredFile, StoredFileSchema } from './schemas/file.schema';
 import { StorageModule } from './storage/storage.module';
 import { StorageService } from './storage/storage.service';
+import { FilesCleanupService } from './files-cleanup.service';
 
 @Module({
   imports: [
@@ -50,7 +51,11 @@ import { StorageService } from './storage/storage.service';
     }),
   ],
   controllers: [FilesController],
-  providers: [FilesService, CleanupUploadOnErrorInterceptor],
+  providers: [
+    FilesService,
+    CleanupUploadOnErrorInterceptor,
+    FilesCleanupService,
+  ],
   exports: [FilesService],
 })
 export class FilesModule {}

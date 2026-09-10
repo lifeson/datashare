@@ -37,3 +37,6 @@ export const DOWNLOAD_TOKEN_LENGTH = 21;
 
 /** Durée d'expiration par défaut, en jours. */
 export const DEFAULT_EXPIRY_DAYS = 7;
+
+/** Durée de conservation d'un tombstone (jours) avant purge définitive. */
+export const TOMBSTONE_RETENTION_DAYS = 30;

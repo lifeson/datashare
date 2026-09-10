@@ -7,10 +7,12 @@ import { AppController } from './app.controller';
 import { AuthModule } from './auth/auth.module';
 import { FilesModule } from './files/files.module';
 import { UsersModule } from './users/users.module';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    ScheduleModule.forRoot(),
     MongooseModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
