@@ -87,6 +87,19 @@ npm run test:watch    # mode continu
 | | `toView` masque `downloadToken` / `downloadUrl` pour un fichier expiré | Tombstone |
 | `files/storage/storage.service.spec.ts` | `pathFor`, création du répertoire, `remove` tolérant à `ENOENT` | Abstraction de stockage |
 
+### US02 — Téléchargement via lien (back-end)
+
+| Fichier | Cas de test | Vérifie |
+|---|---|---|
+| `files/files.service.spec.ts` | `getMetaByToken` : métadonnées d'un fichier actif · `isProtected` · `404` jeton inconnu · `410` date dépassée · `410` tombstone | Contrôle d'accès public |
+| | `prepareDownload` : renvoie le flux + `downloadCount++` (fichier non protégé) · bon mot de passe accepté · `401` mot de passe faux **sans** incrément · `401` mot de passe absent · `404` jeton inconnu · `410` expiré · `410` fichier absent du disque | Sécurité, comptage, vérification paresseuse |
+
+### US02 — Téléchargement via lien (front-end)
+
+| Fichier | Cas de test | Vérifie |
+|---|---|---|
+| `features/download/download-page.spec.ts` | Métadonnées affichées (nom, taille, bandeau d'expiration) · champ mot de passe + bouton désactivé si protégé · bannière « expiré » sur `410` · « Lien invalide » sur `404` · téléchargement déclenché au clic · message sur mot de passe incorrect `401` | Écran `/d/:token` |
+
 ### US01 / US03 / US04 — Front-end (Angular)
 
 | Fichier | Cas de test | Vérifie |
@@ -98,7 +111,7 @@ npm run test:watch    # mode continu
 
 ## 5. Couverture actuelle
 
-- **Back-end** : `npm run test:cov` — 29 tests, 6 suites. `auth.service.ts` et `jwt.strategy.ts` à 100 %, `files.service.ts` à 100 %, `storage.service.ts` ~86 %.
-- **Front-end** : `npm test` — 20 tests, 5 suites (Vitest).
+- **Back-end** : `npm run test:cov` — 41 tests, 6 suites. `auth.service.ts`, `jwt.strategy.ts` et `files.service.ts` à ~100 %, `storage.service.ts` ~86 %.
+- **Front-end** : `npm test` — 26 tests, 6 suites (Vitest).
 
 Les contrôleurs, modules, guards et décorateurs (back), ainsi que l'intégration front↔back, seront couverts par les **tests d'intégration (Supertest)** et **e2e (Cypress)** à l'étape 5. Objectif global 70 % visé à ce moment-là.

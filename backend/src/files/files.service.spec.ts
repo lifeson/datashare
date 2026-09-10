@@ -1,9 +1,16 @@
+import { Readable } from 'node:stream';
 import { Test, TestingModule } from '@nestjs/testing';
+import {
+  GoneException,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { getModelToken } from '@nestjs/mongoose';
 import { Types } from 'mongoose';
 import * as bcrypt from 'bcrypt';
 import { FilesService } from './files.service';
+import { StorageService } from './storage/storage.service';
 import { StoredFile, type StoredFileDocument } from './schemas/file.schema';
 
 describe('FilesService', () => {
@@ -24,24 +31,65 @@ describe('FilesService', () => {
       });
     }),
   };
-  const FileModel = jest
-    .fn()
-    .mockImplementation((attrs: Record<string, unknown>) => {
+
+  // Le modèle est un constructeur (new Model()) ET un objet avec des méthodes statiques.
+  const FileModel = Object.assign(
+    jest.fn().mockImplementation((attrs: Record<string, unknown>) => {
       savedAttrs = attrs;
       return modelInstance;
-    });
+    }),
+    {
+      findOne: jest.fn(),
+      updateOne: jest.fn(),
+    },
+  );
 
   const config = {
     get: jest.fn().mockReturnValue('http://localhost:4200'),
   } as unknown as ConfigService;
 
+  const storage = {
+    exists: jest.fn().mockReturnValue(true),
+    createReadStream: jest.fn().mockReturnValue(Readable.from(['x'])),
+    remove: jest.fn(),
+    getRoot: jest.fn().mockReturnValue('/data/storage'),
+    pathFor: jest.fn(),
+  };
+
+  /** Query Mongoose simulée : `findOne(...).exec()`. */
+  const asQuery = <T>(value: T) => ({
+    exec: jest.fn().mockResolvedValue(value),
+  });
+
+  /** Fabrique un document fichier. */
+  function makeFileDoc(overrides: Record<string, unknown> = {}) {
+    return {
+      _id: new Types.ObjectId(),
+      downloadToken: 'tok123',
+      originalName: 'photo.jpg',
+      storageKey: 'uuid-1',
+      mimeType: 'image/jpeg',
+      size: 5000,
+      passwordHash: null,
+      status: 'active',
+      deletedFileAt: null,
+      expiresAt: new Date(Date.now() + 3 * 86_400_000),
+      downloadCount: 0,
+      ...overrides,
+    };
+  }
+
   beforeEach(async () => {
     jest.clearAllMocks();
+    storage.exists.mockReturnValue(true);
+    storage.createReadStream.mockReturnValue(Readable.from(['x']));
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         FilesService,
         { provide: getModelToken(StoredFile.name), useValue: FileModel },
         { provide: ConfigService, useValue: config },
+        { provide: StorageService, useValue: storage },
       ],
     }).compile();
     service = module.get<FilesService>(FilesService);
@@ -55,6 +103,7 @@ describe('FilesService', () => {
     size: 5000,
   };
 
+  // ------------------------------------------------------------------ US01
   describe('createFromUpload (US01)', () => {
     it('enregistre le fichier avec un jeton, une expiration et sans mot de passe', async () => {
       const before = Date.now();
@@ -149,6 +198,135 @@ describe('FilesService', () => {
       } as StoredFileDocument);
       expect(view.downloadToken).toBeUndefined();
       expect(view.downloadUrl).toBeUndefined();
+    });
+  });
+
+  // ------------------------------------------------------------------ US02
+  describe('getMetaByToken (US02)', () => {
+    it('renvoie les métadonnées publiques pour un fichier actif', async () => {
+      FileModel.findOne.mockReturnValue(asQuery(makeFileDoc()));
+
+      const meta = await service.getMetaByToken('tok123');
+
+      expect(FileModel.findOne).toHaveBeenCalledWith({
+        downloadToken: 'tok123',
+      });
+      expect(meta).toMatchObject({
+        originalName: 'photo.jpg',
+        size: 5000,
+        mimeType: 'image/jpeg',
+        isProtected: false,
+        expired: false,
+      });
+    });
+
+    it('marque isProtected quand le fichier a un mot de passe', async () => {
+      FileModel.findOne.mockReturnValue(
+        asQuery(makeFileDoc({ passwordHash: '$2b$12$x' })),
+      );
+      const meta = await service.getMetaByToken('tok123');
+      expect(meta.isProtected).toBe(true);
+    });
+
+    it('lève 404 si le jeton est inconnu', async () => {
+      FileModel.findOne.mockReturnValue(asQuery(null));
+      await expect(service.getMetaByToken('inconnu')).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+    });
+
+    it('lève 410 si le fichier est expiré (date dépassée)', async () => {
+      FileModel.findOne.mockReturnValue(
+        asQuery(makeFileDoc({ expiresAt: new Date(Date.now() - 1000) })),
+      );
+      await expect(service.getMetaByToken('tok123')).rejects.toBeInstanceOf(
+        GoneException,
+      );
+    });
+
+    it('lève 410 si le fichier est un tombstone (status expired)', async () => {
+      FileModel.findOne.mockReturnValue(
+        asQuery(makeFileDoc({ status: 'expired', deletedFileAt: new Date() })),
+      );
+      await expect(service.getMetaByToken('tok123')).rejects.toBeInstanceOf(
+        GoneException,
+      );
+    });
+  });
+
+  describe('prepareDownload (US02)', () => {
+    it('renvoie un flux et incrémente downloadCount pour un fichier non protégé', async () => {
+      const doc = makeFileDoc();
+      FileModel.findOne.mockReturnValue(asQuery(doc));
+      FileModel.updateOne.mockReturnValue(asQuery({ modifiedCount: 1 }));
+
+      const result = await service.prepareDownload('tok123');
+
+      expect(result).toMatchObject({
+        originalName: 'photo.jpg',
+        mimeType: 'image/jpeg',
+        size: 5000,
+      });
+      expect(result.stream).toBeInstanceOf(Readable);
+      expect(FileModel.updateOne).toHaveBeenCalledWith(
+        { _id: doc._id },
+        { $inc: { downloadCount: 1 } },
+      );
+      expect(storage.createReadStream).toHaveBeenCalledWith('uuid-1');
+    });
+
+    it('accepte le bon mot de passe pour un fichier protégé', async () => {
+      const passwordHash = await bcrypt.hash('secret6', 4);
+      FileModel.findOne.mockReturnValue(asQuery(makeFileDoc({ passwordHash })));
+      FileModel.updateOne.mockReturnValue(asQuery({ modifiedCount: 1 }));
+
+      await expect(
+        service.prepareDownload('tok123', 'secret6'),
+      ).resolves.toBeDefined();
+    });
+
+    it("lève 401 si le mot de passe est faux (et n'incrémente pas)", async () => {
+      const passwordHash = await bcrypt.hash('secret6', 4);
+      FileModel.findOne.mockReturnValue(asQuery(makeFileDoc({ passwordHash })));
+
+      await expect(
+        service.prepareDownload('tok123', 'mauvais'),
+      ).rejects.toBeInstanceOf(UnauthorizedException);
+      expect(FileModel.updateOne).not.toHaveBeenCalled();
+    });
+
+    it('lève 401 si le mot de passe est absent pour un fichier protégé', async () => {
+      const passwordHash = await bcrypt.hash('secret6', 4);
+      FileModel.findOne.mockReturnValue(asQuery(makeFileDoc({ passwordHash })));
+
+      await expect(service.prepareDownload('tok123')).rejects.toBeInstanceOf(
+        UnauthorizedException,
+      );
+    });
+
+    it('lève 404 si le jeton est inconnu', async () => {
+      FileModel.findOne.mockReturnValue(asQuery(null));
+      await expect(service.prepareDownload('inconnu')).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+    });
+
+    it('lève 410 si le fichier est expiré', async () => {
+      FileModel.findOne.mockReturnValue(
+        asQuery(makeFileDoc({ status: 'expired' })),
+      );
+      await expect(service.prepareDownload('tok123')).rejects.toBeInstanceOf(
+        GoneException,
+      );
+    });
+
+    it('lève 410 si le fichier a disparu du disque', async () => {
+      FileModel.findOne.mockReturnValue(asQuery(makeFileDoc()));
+      storage.exists.mockReturnValue(false);
+
+      await expect(service.prepareDownload('tok123')).rejects.toBeInstanceOf(
+        GoneException,
+      );
     });
   });
 });
