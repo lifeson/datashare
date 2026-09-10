@@ -39,6 +39,7 @@ describe('FilesService', () => {
       return modelInstance;
     }),
     {
+      find: jest.fn(),
       findOne: jest.fn(),
       updateOne: jest.fn(),
     },
@@ -58,6 +59,11 @@ describe('FilesService', () => {
 
   /** Query Mongoose simulée : `findOne(...).exec()`. */
   const asQuery = <T>(value: T) => ({
+    exec: jest.fn().mockResolvedValue(value),
+  });
+
+  const asListQuery = <T>(value: T) => ({
+    sort: jest.fn().mockReturnThis(),
     exec: jest.fn().mockResolvedValue(value),
   });
 
@@ -327,6 +333,49 @@ describe('FilesService', () => {
       await expect(service.prepareDownload('tok123')).rejects.toBeInstanceOf(
         GoneException,
       );
+    });
+  });
+
+  describe('listForUser (US05)', () => {
+    /** Récupère le filtre passé au dernier `find()`. */
+    const lastFilter = (): Record<string, unknown> => {
+      const calls = FileModel.find.mock.calls as unknown as unknown[][];
+      return (calls.at(-1)?.[0] ?? {}) as Record<string, unknown>;
+    };
+
+    it('status=all : liste tous les fichiers du propriétaire, triés par date', async () => {
+      const docs = [makeFileDoc(), makeFileDoc({ originalName: 'b.pdf' })];
+      const query = asListQuery(docs);
+      FileModel.find.mockReturnValue(query);
+
+      const result = await service.listForUser('owner-1', 'all');
+
+      expect(FileModel.find).toHaveBeenCalledWith({ owner: 'owner-1' });
+      expect(query.sort).toHaveBeenCalledWith({ createdAt: -1 });
+      expect(result.count).toBe(2);
+      expect(result.items[0].originalName).toBe('photo.jpg');
+    });
+
+    it('status=active : filtre sur statut actif et date future', async () => {
+      FileModel.find.mockReturnValue(asListQuery([]));
+      await service.listForUser('owner-1', 'active');
+
+      const filter = lastFilter();
+      expect(filter.owner).toBe('owner-1');
+      expect(filter.status).toBe('active');
+      expect((filter.expiresAt as { $gt: Date }).$gt).toBeInstanceOf(Date);
+    });
+
+    it('status=expired : filtre sur tombstone OU date dépassée', async () => {
+      FileModel.find.mockReturnValue(asListQuery([]));
+      await service.listForUser('owner-1', 'expired');
+
+      const filter = lastFilter();
+      expect(filter.owner).toBe('owner-1');
+      expect(filter.$or).toEqual([
+        { status: 'expired' },
+        { expiresAt: expect.any(Object) as unknown },
+      ]);
     });
   });
 });

@@ -100,6 +100,13 @@ npm run test:watch    # mode continu
 |---|---|---|
 | `features/download/download-page.spec.ts` | Métadonnées affichées (nom, taille, bandeau d'expiration) · champ mot de passe + bouton désactivé si protégé · bannière « expiré » sur `410` · « Lien invalide » sur `404` · téléchargement déclenché au clic · message sur mot de passe incorrect `401` | Écran `/d/:token` |
 
+### US05 — Historique « Mes fichiers »
+
+| Fichier | Cas de test | Vérifie |
+|---|---|---|
+| `files/files.service.spec.ts` | `listForUser` : `status=all` → filtre `{ owner }` + tri `createdAt: -1` · `status=active` → `status: 'active'` + `expiresAt.$gt` · `status=expired` → `$or` tombstone / date dépassée | Filtres de l'historique (back) |
+| `features/my-files/my-files-page.spec.ts` | Chargement de l'onglet « Tous » au démarrage · lien « Accéder » sur un fichier actif · message « n'est plus stocké chez nous » sur un fichier expiré (pas de lien) · rechargement au changement d'onglet · état vide | Écran « Mes fichiers » (front) |
+
 ### US01 / US03 / US04 — Front-end (Angular)
 
 | Fichier | Cas de test | Vérifie |
@@ -111,7 +118,7 @@ npm run test:watch    # mode continu
 
 ## 5. Couverture actuelle
 
-- **Back-end** : `npm run test:cov` — 41 tests, 6 suites. `auth.service.ts`, `jwt.strategy.ts` et `files.service.ts` à ~100 %, `storage.service.ts` ~86 %.
-- **Front-end** : `npm test` — 26 tests, 6 suites (Vitest).
+- **Back-end** : `npm run test:cov` — 44 tests, 6 suites. `auth.service.ts`, `jwt.strategy.ts` et `files.service.ts` à ~100 %, `storage.service.ts` ~86 %.
+- **Front-end** : `npm test` — 30 tests, 7 suites (Vitest).
 
 Les contrôleurs, modules, guards et décorateurs (back), ainsi que l'intégration front↔back, seront couverts par les **tests d'intégration (Supertest)** et **e2e (Cypress)** à l'étape 5. Objectif global 70 % visé à ce moment-là.
