@@ -114,6 +114,12 @@ npm run test:watch    # mode continu
 | `files/files.service.spec.ts` | `deleteForUser` : supprime le fichier disque **puis** le document pour le propriétaire · `404` id mal formé · `404` fichier absent · `403` si non-propriétaire (sans `deleteOne`) | Suppression sécurisée (back) |
 | `features/my-files/my-files-page.spec.ts` | clic « Supprimer » + confirmation → appel `remove()` + rechargement · confirmation annulée → aucun appel | Bouton Supprimer (front) |
 
+### US10 — Expiration automatique
+
+| Fichier | Cas de test | Vérifie |
+|---|---|---|
+| `files/files-cleanup.service.spec.ts` | `expireOverdueFiles` : fichier échu → tombstone (`$unset` jeton/clé, `passwordHash: null`) + `storage.remove` · aucun échu → aucune action · `purgeOldTombstones` : `deleteMany` avec cutoff à 30 j · `handleCleanup` enchaîne les deux | Tâche CRON d'expiration |
+
 ### US01 / US03 / US04 — Front-end (Angular)
 
 | Fichier | Cas de test | Vérifie |
@@ -125,7 +131,7 @@ npm run test:watch    # mode continu
 
 ## 5. Couverture actuelle
 
-- **Back-end** : `npm run test:cov` — 48 tests, 6 suites. `auth.service.ts`, `jwt.strategy.ts` et `files.service.ts` à ~100 %, `storage.service.ts` ~86 %.
+- **Back-end** : `npm run test:cov` — 52 tests, 7 suites. `auth.service.ts`, `jwt.strategy.ts`, `files.service.ts` et `files-cleanup.service.ts` à ~100 %, `storage.service.ts` ~86 %.
 - **Front-end** : `npm test` — 32 tests, 7 suites (Vitest).
 
 Les contrôleurs, modules, guards et décorateurs (back), ainsi que l'intégration front↔back, seront couverts par les **tests d'intégration (Supertest)** et **e2e (Cypress)** à l'étape 5. Objectif global 70 % visé à ce moment-là.
