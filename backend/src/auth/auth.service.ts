@@ -1,0 +1,70 @@
+import { ConflictException, Injectable } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+import * as bcrypt from 'bcrypt';
+import { UsersService } from '../users/users.service';
+import { UserDocument } from '../users/schemas/user.schema';
+import { RegisterDto } from './dto/register.dto';
+
+/** Nombre de tours bcrypt (coût). */
+export const BCRYPT_ROUNDS = 12;
+
+/** Représentation d'un utilisateur exposée par l'API (jamais le hash). */
+export interface PublicUser {
+  id: string;
+  email: string;
+  name?: string;
+  createdAt: Date;
+}
+
+export interface AuthResult {
+  accessToken: string;
+  user: PublicUser;
+}
+
+export interface JwtPayload {
+  sub: string;
+  email: string;
+}
+
+@Injectable()
+export class AuthService {
+  constructor(
+    private readonly usersService: UsersService,
+    private readonly jwtService: JwtService,
+  ) {}
+
+  /** US03 — Création de compte. */
+  async register(dto: RegisterDto): Promise<AuthResult> {
+    const existing = await this.usersService.findByEmail(dto.email);
+    if (existing) {
+      throw new ConflictException('Un compte existe déjà avec cet email.');
+    }
+
+    const passwordHash = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
+    const user = await this.usersService.create({
+      email: dto.email,
+      passwordHash,
+      name: dto.name,
+    });
+
+    return this.buildAuthResult(user);
+  }
+
+  /** Construit la réponse { accessToken, user } pour un utilisateur donné. */
+  async buildAuthResult(user: UserDocument): Promise<AuthResult> {
+    const publicUser = this.toPublicUser(user);
+    const payload: JwtPayload = { sub: publicUser.id, email: publicUser.email };
+    const accessToken = await this.jwtService.signAsync(payload);
+    return { accessToken, user: publicUser };
+  }
+
+  /** Mappe un document Mongo vers la vue publique (sans passwordHash). */
+  toPublicUser(user: UserDocument): PublicUser {
+    return {
+      id: user._id.toString(),
+      email: user.email,
+      name: user.name,
+      createdAt: user.createdAt,
+    };
+  }
+}
