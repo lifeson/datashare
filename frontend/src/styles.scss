@@ -1,1 +1,55 @@
-/* You can add global styles to this file, and also import other style files */
+/* ------------------------------------------------------------------ *
+ *  DataShare — styles globaux et jetons de design (maquette Figma)
+ * ------------------------------------------------------------------ */
+
+:root {
+  --ds-gradient: linear-gradient(158deg, #f7bd94 0%, #ef8f6f 45%, #e2645b 100%);
+  --ds-text: #2c2c2c;
+  --ds-muted: #8c8c8c;
+  --ds-accent: #e8734b;
+  --ds-accent-strong: #d95b34;
+  --ds-accent-soft: #fde7da;
+  --ds-danger: #d24a3d;
+  --ds-card-bg: #ffffff;
+  --ds-field-bg: #f6f6f6;
+  --ds-radius-lg: 20px;
+  --ds-radius-md: 12px;
+  --ds-shadow: 0 22px 50px rgba(150, 65, 40, 0.22);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  font-family:
+    'Inter',
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
+  color: var(--ds-text);
+  background: var(--ds-gradient) fixed;
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+  border: none;
+}
+
+a {
+  color: inherit;
+}
+
+input,
+select {
+  font: inherit;
+}

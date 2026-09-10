@@ -1,0 +1,107 @@
+@let file = selectedFile();
+@let uploaded = result();
+
+<section class="upload">
+  <!-- État 3 : succès -->
+  @if (uploaded) {
+    <div class="card card--success">
+      <h1 class="card__title">Ajouter un fichier</h1>
+
+      <div class="file-row">
+        <span class="file-row__icon" aria-hidden="true">📄</span>
+        <div class="file-row__info">
+          <span class="file-row__name">{{ uploaded.originalName }}</span>
+          <span class="file-row__size">{{ formatSize(uploaded.size) }}</span>
+        </div>
+      </div>
+
+      <p class="success-text">
+        Félicitations&nbsp;! Ton fichier sera conservé jusqu'au
+        <strong>{{ uploaded.expiresAt | date: 'longDate' }}</strong
+        >.
+      </p>
+
+      <div class="link-box">
+        <a [href]="uploaded.downloadUrl" target="_blank" rel="noopener">{{
+          uploaded.downloadUrl
+        }}</a>
+      </div>
+
+      <div class="actions">
+        <button type="button" class="btn btn--primary" (click)="copyLink()">
+          {{ linkCopied() ? 'Lien copié !' : 'Copier le lien' }}
+        </button>
+        <button type="button" class="btn btn--ghost" (click)="reset()">
+          Téléverser un autre fichier
+        </button>
+      </div>
+    </div>
+  } @else if (!file) {
+    <!-- État 1 : accueil -->
+    <div class="landing">
+      <p class="landing__prompt">Tu veux partager un fichier ?</p>
+      <label class="drop-button">
+        <input type="file" class="visually-hidden" (change)="onFileSelected($event)" />
+        <span class="drop-button__icon" aria-hidden="true">⬆</span>
+        <span class="visually-hidden">Choisir un fichier</span>
+      </label>
+    </div>
+  } @else {
+    <!-- État 2 : formulaire -->
+    <form class="card" [formGroup]="form" (ngSubmit)="submit()">
+      <h1 class="card__title">Ajouter un fichier</h1>
+
+      <div class="file-row">
+        <span class="file-row__icon" aria-hidden="true">📄</span>
+        <div class="file-row__info">
+          <span class="file-row__name">{{ file.name }}</span>
+          <span class="file-row__size" [class.file-row__size--error]="tooLarge()">{{
+            formatSize(file.size)
+          }}</span>
+        </div>
+        <label class="btn btn--changer">
+          <input type="file" class="visually-hidden" (change)="onFileSelected($event)" />
+          Changer
+        </label>
+      </div>
+
+      @if (tooLarge()) {
+        <p class="field-error">La taille des fichiers est limitée à 1 Go.</p>
+      }
+
+      <label class="field">
+        <span class="field__label">Mot de passe</span>
+        <input
+          type="password"
+          formControlName="password"
+          placeholder="Optionnel"
+          autocomplete="new-password"
+        />
+        @if (form.controls.password.touched && form.controls.password.errors?.['minlength']) {
+          <span class="field-error">Au moins 6 caractères.</span>
+        }
+      </label>
+
+      <label class="field">
+        <span class="field__label">Expiration</span>
+        <select formControlName="expiresInDays">
+          @for (opt of expiryOptions; track opt.value) {
+            <option [value]="opt.value">{{ opt.label }}</option>
+          }
+        </select>
+      </label>
+
+      @if (serverError()) {
+        <p class="field-error">{{ serverError() }}</p>
+      }
+
+      <button
+        type="submit"
+        class="btn btn--primary btn--block"
+        [disabled]="tooLarge() || form.invalid || submitting()"
+      >
+        {{ submitting() ? 'Téléversement…' : 'Téléverser' }}
+      </button>
+    </form>
+  }
+</section>
