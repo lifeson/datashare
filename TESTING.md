@@ -7,7 +7,8 @@
 
 | Niveau | Outil | Portée |
 |---|---|---|
-| Unitaire | **Jest** (`backend/`) | Services et logique métier, dépendances simulées (mocks) — **pas de base de données** |
+| Unitaire back-end | **Jest** (`backend/`) | Services et logique métier, dépendances simulées (mocks) — **pas de base de données** |
+| Unitaire front-end | **Vitest** (`frontend/`, via `@angular/build:unit-test`) | Services et composants Angular, HTTP simulé (`HttpTestingController`) |
 | Intégration API | **Supertest** (à venir, étape 5) | Endpoints réels avec base de test |
 | End-to-end | **Cypress** (à venir, étape 5) | Parcours utilisateur complets (≥ 2-3 scénarios critiques) |
 
@@ -16,10 +17,15 @@
 ## 2. Exécution
 
 ```bash
+# Back-end
 cd backend
 npm test              # tous les tests unitaires
-npm run test:watch    # mode watch
 npm run test:cov      # avec rapport de couverture (dossier coverage/)
+
+# Front-end
+cd frontend
+npm test              # exécution unique
+npm run test:watch    # mode continu
 ```
 
 ## 3. Fonctionnalités critiques et couverture
@@ -72,14 +78,27 @@ npm run test:cov      # avec rapport de couverture (dossier coverage/)
 - Un token JWT est généré et transmis au client.
 - Aucune distinction entre « email inconnu » et « mot de passe incorrect » (sécurité).
 
+### US01 — Téléversement (back-end)
+
+| Fichier | Cas de test | Vérifie |
+|---|---|---|
+| `files/files.service.spec.ts` | `createFromUpload` : jeton `nanoid` (21), `expiresAt` calculé, `expiresInDays` défaut 7 | Génération du lien, expiration |
+| | hache le mot de passe du fichier (bcrypt) quand fourni | Sécurité (US09) |
+| | `toView` masque `downloadToken` / `downloadUrl` pour un fichier expiré | Tombstone |
+| `files/storage/storage.service.spec.ts` | `pathFor`, création du répertoire, `remove` tolérant à `ENOENT` | Abstraction de stockage |
+
+### US01 / US03 / US04 — Front-end (Angular)
+
+| Fichier | Cas de test | Vérifie |
+|---|---|---|
+| `core/utils/file-size.spec.ts` | Formatage « 2,6 Mo », arrondis | Affichage des tailles |
+| `features/upload/upload-page.spec.ts` | Rendu des 3 états (accueil / formulaire / succès), blocage > 1 Go, appel API + lien, message d'erreur `401` | Écran de téléversement (US01) |
+| `core/auth/auth.service.spec.ts` | `login` / `register` stockent le token et l'utilisateur ; `logout` vide tout + `localStorage` ; `GET /auth/me` au démarrage ; déconnexion sur `401` | Session client |
+| `features/auth/auth-page.spec.ts` | Modes Connexion / Créer un compte, mots de passe différents → bouton désactivé, connexion réussie → redirection, message clair sur `409` | Écrans d'auth (US03/US04) |
+
 ## 5. Couverture actuelle
 
-`npm run test:cov` — 18 tests, 4 suites.
+- **Back-end** : `npm run test:cov` — 29 tests, 6 suites. `auth.service.ts` et `jwt.strategy.ts` à 100 %, `files.service.ts` à 100 %, `storage.service.ts` ~86 %.
+- **Front-end** : `npm test` — 20 tests, 5 suites (Vitest).
 
-| Fichier | Couverture lignes |
-|---|---|
-| `auth/auth.service.ts` | 100 % |
-| `auth/strategies/jwt.strategy.ts` | 100 % |
-| `users/users.service.ts` | ~70 % |
-
-Les contrôleurs, modules, guards et décorateurs seront couverts par les **tests d'intégration (Supertest)** et **e2e (Cypress)** à l'étape 5. Objectif global 70 % visé à ce moment-là.
+Les contrôleurs, modules, guards et décorateurs (back), ainsi que l'intégration front↔back, seront couverts par les **tests d'intégration (Supertest)** et **e2e (Cypress)** à l'étape 5. Objectif global 70 % visé à ce moment-là.
