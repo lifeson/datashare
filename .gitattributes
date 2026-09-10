@@ -1,0 +1,11 @@
+# Normalise les fins de ligne : stockées et extraites en LF partout
+# (cohérent avec Prettier et .editorconfig, évite les avertissements CRLF sous Windows).
+* text=auto eol=lf
+
+# Fichiers binaires : ne pas toucher
+*.png binary
+*.jpg binary
+*.pdf binary
+*.odt binary
+*.docx binary
+*.ico binary

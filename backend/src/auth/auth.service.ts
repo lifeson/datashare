@@ -1,12 +1,24 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { UsersService } from '../users/users.service';
 import { UserDocument } from '../users/schemas/user.schema';
+import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 
 /** Nombre de tours bcrypt (coût). */
 export const BCRYPT_ROUNDS = 12;
+
+/**
+ * Hash factice comparé lorsqu'aucun compte ne correspond à l'email fourni,
+ * afin d'égaliser le temps de réponse et de limiter l'énumération de comptes.
+ */
+const DUMMY_HASH =
+  '$2b$12$jLoChfI38aA/M0x9XQxuA.Qfq9KM5nqszovhBQhWAxLJnPa8nqq7a';
 
 /** Représentation d'un utilisateur exposée par l'API (jamais le hash). */
 export interface PublicUser {
@@ -48,6 +60,31 @@ export class AuthService {
     });
 
     return this.buildAuthResult(user);
+  }
+
+  /** US04 — Connexion. */
+  async login(dto: LoginDto): Promise<AuthResult> {
+    const user = await this.usersService.findByEmail(dto.email);
+    const passwordOk = await bcrypt.compare(
+      dto.password,
+      user?.passwordHash ?? DUMMY_HASH,
+    );
+
+    // Même erreur et même message que l'email soit inconnu ou le mot de passe faux.
+    if (!user || !passwordOk) {
+      throw new UnauthorizedException('Email ou mot de passe incorrect.');
+    }
+
+    return this.buildAuthResult(user);
+  }
+
+  /** Profil de l'utilisateur authentifié (route /auth/me). */
+  async getProfile(userId: string): Promise<PublicUser> {
+    const user = await this.usersService.findById(userId);
+    if (!user) {
+      throw new UnauthorizedException();
+    }
+    return this.toPublicUser(user);
   }
 
   /** Construit la réponse { accessToken, user } pour un utilisateur donné. */
