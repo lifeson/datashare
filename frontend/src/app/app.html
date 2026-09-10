@@ -2,13 +2,21 @@
   <header class="shell__header">
     <a routerLink="/" class="shell__logo">DataShare</a>
 
-    <!-- TODO (guide auth) : afficher « Mon espace » / « Déconnexion » quand l'utilisateur est connecté -->
-    <a routerLink="/auth" class="shell__action">Se connecter</a>
+    @if (auth.isAuthenticated()) {
+      <nav class="shell__nav">
+        <a routerLink="/mes-fichiers" class="shell__action">Mon espace</a>
+        <button type="button" class="shell__logout" (click)="logout()">
+          Déconnexion
+        </button>
+      </nav>
+    } @else {
+      <a routerLink="/auth" class="shell__action">Se connecter</a>
+    }
   </header>
 
   <main class="shell__main">
     <router-outlet />
   </main>
 
-  <footer class="shell__footer">Copyright DataShare&reg; 2026</footer>
+  <footer class="shell__footer">Copyright DataShare® 2026</footer>
 </div>
