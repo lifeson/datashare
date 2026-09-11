@@ -9,6 +9,18 @@ import request from 'supertest';
 import type { App } from 'supertest/types';
 import { AppModule } from '../src/app.module';
 
+/** Formes minimales des réponses JSON, pour éviter tout accès `any` (`res.body` est typé `any` par supertest). */
+interface AuthResponseBody {
+  accessToken: string;
+  user: { email: string };
+}
+interface FileResponseBody {
+  id: string;
+  downloadToken: string;
+  originalName: string;
+  isProtected: boolean;
+}
+
 describe('Parcours critique DataShare (intégration HTTP)', () => {
   let app: INestApplication<App>;
   let server: App;
@@ -67,9 +79,10 @@ describe('Parcours critique DataShare (intégration HTTP)', () => {
         .send({ email, password })
         .expect(201);
 
-      expect(res.body.accessToken).toEqual(expect.any(String));
-      expect(res.body.user).toMatchObject({ email });
-      expect(res.body.user).not.toHaveProperty('passwordHash');
+      const body = res.body as AuthResponseBody;
+      expect(body.accessToken).toEqual(expect.any(String));
+      expect(body.user).toMatchObject({ email });
+      expect(body.user).not.toHaveProperty('passwordHash');
     });
 
     it('rejette une deuxième inscription avec le même email (409)', async () => {
@@ -92,7 +105,7 @@ describe('Parcours critique DataShare (intégration HTTP)', () => {
         .send({ email, password })
         .expect(200);
 
-      accessToken = res.body.accessToken as string;
+      accessToken = (res.body as AuthResponseBody).accessToken;
       expect(accessToken).toEqual(expect.any(String));
     });
   });
@@ -117,10 +130,11 @@ describe('Parcours critique DataShare (intégration HTTP)', () => {
         )
         .expect(201);
 
-      expect(res.body.id).toEqual(expect.any(String));
-      expect(res.body.downloadToken).toEqual(expect.any(String));
-      fileId = res.body.id as string;
-      downloadToken = res.body.downloadToken as string;
+      const body = res.body as FileResponseBody;
+      expect(body.id).toEqual(expect.any(String));
+      expect(body.downloadToken).toEqual(expect.any(String));
+      fileId = body.id;
+      downloadToken = body.downloadToken;
     });
 
     it('expose les métadonnées publiques du fichier (200)', async () => {
@@ -128,8 +142,9 @@ describe('Parcours critique DataShare (intégration HTTP)', () => {
         .get(`/api/files/${downloadToken}`)
         .expect(200);
 
-      expect(res.body.originalName).toBe('rapport.txt');
-      expect(res.body.isProtected).toBe(false);
+      const body = res.body as FileResponseBody;
+      expect(body.originalName).toBe('rapport.txt');
+      expect(body.isProtected).toBe(false);
     });
 
     it('télécharge le fichier : le contenu reçu correspond à celui envoyé (200)', async () => {
@@ -149,9 +164,10 @@ describe('Parcours critique DataShare (intégration HTTP)', () => {
         .send({ email: otherEmail, password })
         .expect(201);
 
+      const otherToken = (other.body as AuthResponseBody).accessToken;
       await request(server)
         .delete(`/api/files/${fileId}`)
-        .set('Authorization', `Bearer ${other.body.accessToken as string}`)
+        .set('Authorization', `Bearer ${otherToken}`)
         .expect(403);
     });
 
