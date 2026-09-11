@@ -10,7 +10,7 @@
 | Unitaire back-end  | **Jest** (`backend/`)                                    | Services et logique métier, dépendances simulées (mocks) — **pas de base de données** |
 | Unitaire front-end | **Vitest** (`frontend/`, via `@angular/build:unit-test`) | Services et composants Angular, HTTP simulé (`HttpTestingController`)                 |
 | Intégration API    | **Supertest** (`critical-flow.e2e-spec.ts`)              | Endpoints réels avec base de test                                                     |
-| End-to-end         | **Cypress** (à venir, étape 5)                           | Parcours utilisateur complets (≥ 2-3 scénarios critiques)                             |
+| End-to-end         | **Cypress** (`cypress/e2e/*.cy.ts`)                      | Parcours utilisateur complets (≥ 2-3 scénarios critiques)                             |
 
 **Objectif de couverture** : ≥ 70 % (indicatif), mesuré via `npm run test:cov`.
 
@@ -27,6 +27,8 @@ npm run test:e2e      # tests d'intégration (nécessite Mongo démarré)
 cd frontend
 npm test              # exécution unique
 npm run test:watch    # mode continu
+npm run e2e           # tests e2e (nécessite backend + Mongo + `ng serve` démarrés)
+npm run e2e:open      # idem, avec le navigateur piloté en direct
 ```
 
 ## 3. Plan de tests — fonctionnalités critiques
@@ -37,16 +39,16 @@ npm run test:watch    # mode continu
 | C2  | Unicité de l'email à l'inscription                    | US03    | Unitaire               | Une deuxième inscription avec le même email est rejetée (409)                                                         | `auth.service.spec.ts`                                    | ✅     |
 | C3  | Vérification des identifiants au login                | US04    | Unitaire               | Email inconnu et mot de passe faux renvoient le **même** message (401)                                                | `auth.service.spec.ts`                                    | ✅     |
 | C4  | Émission et validation du JWT                         | US03/04 | Unitaire               | Token signé `{ sub, email }` ; accepté par le guard, refusé si l'utilisateur n'existe plus                            | `auth.service.spec.ts`, `jwt.strategy.spec.ts`            | ✅     |
-| C5  | Validation des entrées (DTO) aux frontières HTTP      | US03/04 | Intégration            | Un corps de requête invalide est rejeté (400) avant d'atteindre le service                                            | `test/critical-flow.e2e-spec.ts`                          |       |
+| C5  | Validation des entrées (DTO) aux frontières HTTP      | US03/04 | Intégration            | Un corps de requête invalide est rejeté (400) avant d'atteindre le service                                            | `test/critical-flow.e2e-spec.ts`                          | ✅     |
 | C6  | Protection des routes privées                         | US04    | Unitaire + Intégration | Toute route privée sans jeton (ou jeton invalide) renvoie 401                                                         | `jwt.strategy.spec.ts` / `test/critical-flow.e2e-spec.ts` | ✅ / ✅ |
 | C7  | Téléversement sécurisé (taille, extension, orphelins) | US01    | Unitaire               | Fichier > 1 Go rejeté (413), extension interdite rejetée (415) **avant** écriture disque, aucun orphelin après erreur | `files.service.spec.ts`                                   | ✅     |
 | C8  | Génération du lien de téléchargement                  | US01    | Unitaire               | Jeton non prédictible (`nanoid`, 21 car.), un fichier = un lien                                                       | `files.service.spec.ts`                                   | ✅     |
 | C9  | Contrôle d'accès au téléchargement                    | US02    | Unitaire               | Mot de passe fichier vérifié si défini ; 404 si jeton inconnu ; 410 si expiré                                         | `files.service.spec.ts`                                   | ✅     |
 | C10 | Suppression sécurisée d'un fichier                    | US06    | Unitaire               | Seul le propriétaire peut supprimer (403 sinon) ; suppression physique + document                                     | `files.service.spec.ts`                                   | ✅     |
 | C11 | Expiration automatique                                | US10    | Unitaire               | Fichier échu → tombstone (contenu supprimé) ; tombstone > 30 j → purgé                                                | `files-cleanup.service.spec.ts`                           | ✅     |
-| C12 | Parcours utilisateur complet (bout en bout)           | Toutes  | End-to-end             | Un utilisateur crée un compte, se connecte, téléverse puis télécharge un fichier                                      | *(à venir)*                                               | ⏳     |
+| C12 | Parcours utilisateur complet (bout en bout)           | Toutes  | End-to-end             | Un utilisateur crée un compte, se connecte, téléverse puis télécharge un fichier                                      | `cypress/e2e/parcours-critique.cy.ts`                     | ✅     |
 
-*Lignes ⏳ : couvertes par les tests d'intégration (Supertest) et end-to-end (Cypress) de l'étape 5, en cours d'ajout.*
+*Les trois niveaux (unitaire, intégration, end-to-end) sont désormais tous représentés.*
 
 ## 4. Détail des tests par User Story
 
@@ -141,9 +143,18 @@ npm run test:watch    # mode continu
 | `features/auth/auth-page.spec.ts`     | Modes Connexion / Créer un compte, mots de passe différents → bouton désactivé, connexion réussie → redirection, message clair sur `409`                                                                                                                    | Écrans d'auth (US03/US04)                                                                    |
 | `test/critical-flow.e2e-spec.ts`      | Parcours complet en HTTP réel : inscription (+ email invalide, + doublon), connexion (+ mauvais mot de passe), upload (+ sans jeton), métadonnées publiques, téléchargement (contenu vérifié), suppression (+ par un autre compte, + lien invalidé ensuite) | Câblage réel des guards, de la pipe de validation et de Multer (non testable avec des mocks) |
 
+### Tests end-to-end (Cypress) — parcours navigateur réel
+
+| Fichier                                | Cas de test                                                                                    | Vérifie                              |
+| --------------------------------------- | ----------------------------------------------------------------------------------------------- | -------------------------------------- |
+| `cypress/e2e/parcours-critique.cy.ts`   | Inscription → téléversement → lien public → téléchargement (contenu du fichier vérifié)         | Parcours utilisateur complet, navigateur réel |
+| `cypress/e2e/suppression.cy.ts`         | Suppression depuis « Mes fichiers » → disparition de la liste → lien devenu invalide             | Suppression bout-en-bout               |
+
 ## 5. Couverture actuelle
 
-- **Back-end** : `npm run test:cov` — 52 tests, 7 suites. `auth.service.ts`, `jwt.strategy.ts`, `files.service.ts` et `files-cleanup.service.ts` à ~100 %, `storage.service.ts` ~86 %.
-- **Front-end** : `npm test` — 32 tests, 7 suites (Vitest).
+- **Back-end (unitaire)** : `npm run test:cov` — 52 tests, 7 suites. `auth.service.ts`, `jwt.strategy.ts`, `files.service.ts` et `files-cleanup.service.ts` à ~100 %, `storage.service.ts` ~86 %.
+- **Back-end (intégration)** : `npm run test:e2e` — 11 tests, 1 suite (`critical-flow.e2e-spec.ts`). Exerce réellement les contrôleurs, guards et pipes que les tests unitaires mockent — non compté dans le rapport `test:cov` (config Jest séparée).
+- **Front-end (unitaire)** : `npm test` — 32 tests, 7 suites (Vitest).
+- **Front-end (e2e)** : `npm run e2e` — 2 tests, 2 specs (Cypress), sur navigateur réel.
 
-Les contrôleurs, modules, guards et décorateurs (back), ainsi que l'intégration front↔back, seront couverts par les **tests d'intégration (Supertest)** et **e2e (Cypress)** à l'étape 5. Objectif global 70 % visé à ce moment-là.
+Rapport de couverture chiffré et seuil de 70 % : voir la prochaine section de l'étape 5 (capture d'écran à l'appui).
