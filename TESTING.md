@@ -27,6 +27,7 @@ npm run test:e2e      # tests d'intégration (nécessite Mongo démarré)
 cd frontend
 npm test              # exécution unique
 npm run test:watch    # mode continu
+npm run test:cov      # avec rapport de couverture (dossier coverage/)
 npm run e2e           # tests e2e (nécessite backend + Mongo + `ng serve` démarrés)
 npm run e2e:open      # idem, avec le navigateur piloté en direct
 ```
@@ -152,9 +153,15 @@ npm run e2e:open      # idem, avec le navigateur piloté en direct
 
 ## 5. Couverture actuelle
 
-- **Back-end (unitaire)** : `npm run test:cov` — 52 tests, 7 suites. `auth.service.ts`, `jwt.strategy.ts`, `files.service.ts` et `files-cleanup.service.ts` à ~100 %, `storage.service.ts` ~86 %.
-- **Back-end (intégration)** : `npm run test:e2e` — 11 tests, 1 suite (`critical-flow.e2e-spec.ts`). Exerce réellement les contrôleurs, guards et pipes que les tests unitaires mockent — non compté dans le rapport `test:cov` (config Jest séparée).
-- **Front-end (unitaire)** : `npm test` — 32 tests, 7 suites (Vitest).
-- **Front-end (e2e)** : `npm run e2e` — 2 tests, 2 specs (Cypress), sur navigateur réel.
+| Projet | Commande | Statements | Branches | Functions | Lines |
+|---|---|:---:|:---:|:---:|:---:|
+| **Back-end** (unitaire, `npm run test:cov`) | Jest | 52.45 % | 55.85 % | 54.38 % | 53.17 % |
+| **Front-end** (unitaire, `npm run test:cov`) | Vitest | **81.66 %** | 78.90 % | 77.02 % | 81.69 % |
 
-Rapport de couverture chiffré et seuil de 70 % : voir la prochaine section de l'étape 5 (capture d'écran à l'appui).
+*(rapports HTML : `backend/coverage/lcov-report/index.html` et `frontend/coverage/index.html`, non commités — capture d'écran à joindre à la documentation finale)*
+
+**Front-end** : au-dessus du seuil indicatif de 70 % dès les tests unitaires — les composants Angular sont testés avec leur template réel (`TestBed`), ce qui couvre naturellement une grande partie du rendu et de la logique.
+
+**Back-end** : 52 % en ne comptant que les tests unitaires (mocks). Le detail par dossier explique pourquoi : `auth.service.ts`, `files.service.ts`, `jwt.strategy.ts` et `files-cleanup.service.ts` — la logique métier, l'essentiel du risque — sont à ~100 %. Les fichiers à 0 % sont les **contrôleurs, DTO, guards, filtres et intercepteurs** : du câblage HTTP qu'un test unitaire mocké ne peut pas exercer utilement (il faudrait re-simuler tout ce que fait déjà Nest). C'est précisément le rôle des **11 tests d'intégration** (`test/critical-flow.e2e-spec.ts`, `npm run test:e2e`) et des **2 tests end-to-end** (`cypress/`, `npm run e2e`) : ils font tourner ces fichiers pour de vrai, via de vraies requêtes HTTP. Leur exécution n'est pas comptée dans ce rapport `test:cov` (config Jest séparée, sans instrumentation de couverture) — le nombre honnête à retenir n'est donc pas 52 %, mais « logique métier ~100 %, câblage HTTP couvert autrement ».
+
+**Choix assumé** : ne pas ajouter d'outillage supplémentaire (fusion de rapports de couverture entre deux configurations Jest) pour faire remonter artificiellement un seul pourcentage global — cela n'aurait rien changé au code testé, seulement à l'affichage du chiffre.
