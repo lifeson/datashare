@@ -30,10 +30,18 @@ export class AuthService {
 
   constructor() {
     // Au démarrage : si un token existe, on récupère le profil.
+    // `queueMicrotask` : appeler `this.http.get` (donc l'intercepteur, qui
+    // injecte `AuthService`) de façon synchrone ICI provoquerait un
+    // NG0200 (dépendance circulaire) — l'instance n'a pas fini de se
+    // construire que l'intercepteur tente déjà de l'injecter à nouveau.
+    // Reporter l'appel d'un micro-tick laisse le constructeur se terminer
+    // avant que l'intercepteur ne s'exécute.
     if (this.token()) {
-      this.http.get<AuthUser>('/api/auth/me').subscribe({
-        next: (user) => this.currentUser.set(user),
-        error: () => this.logout(),
+      queueMicrotask(() => {
+        this.http.get<AuthUser>('/api/auth/me').subscribe({
+          next: (user) => this.currentUser.set(user),
+          error: () => this.logout(),
+        });
       });
     }
   }

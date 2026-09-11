@@ -71,9 +71,13 @@ describe('AuthService', () => {
     httpMock.verify();
   });
 
-  it('au démarrage avec un token, récupère le profil via GET /api/auth/me', () => {
+  it('au démarrage avec un token, récupère le profil via GET /api/auth/me', async () => {
     localStorage.setItem(TOKEN_KEY, 'jwt-existant');
     const { service, httpMock } = setup();
+
+    // L'appel est différé d'un micro-tick (queueMicrotask) pour éviter une
+    // dépendance circulaire avec l'intercepteur — on laisse le micro-tick s'écouler.
+    await Promise.resolve();
 
     const req = httpMock.expectOne('/api/auth/me');
     expect(req.request.method).toBe('GET');
@@ -83,9 +87,11 @@ describe('AuthService', () => {
     httpMock.verify();
   });
 
-  it('au démarrage, un /api/auth/me en échec (401) déconnecte', () => {
+  it('au démarrage, un /api/auth/me en échec (401) déconnecte', async () => {
     localStorage.setItem(TOKEN_KEY, 'jwt-perime');
     const { service, httpMock } = setup();
+
+    await Promise.resolve();
 
     httpMock.expectOne('/api/auth/me').flush(null, { status: 401, statusText: 'Unauthorized' });
 
