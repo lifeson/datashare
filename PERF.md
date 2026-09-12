@@ -1,6 +1,6 @@
 # PERF.md — Test de performance et logs structurés
 
-> Document produit à l'étape 5. Couvre un test de charge (k6) sur l'endpoint critique de téléchargement, et la mise en place de logs structurés pour en analyser les métriques clés.
+> Document produit aux étapes 5 et 6. Couvre un test de charge (k6) sur l'endpoint critique de téléchargement, la mise en place de logs structurés, et un budget de performance côté front-end (poids du bundle + audit Lighthouse).
 
 ## 1. Logs structurés
 
@@ -75,8 +75,65 @@ Seuils fixés dans le script (`options.thresholds`) — **tous deux respectés**
 
 **Analyse** : jusqu'à 20 téléchargements concurrents d'un fichier de 5 Mo, le service reste **stable et rapide** (p95 ≈ 330 ms, aucune erreur). Le flux est servi directement depuis le disque (`fs.createReadStream`, cf. `files.service.ts`), sans le charger entièrement en mémoire — un choix qui paie ici : pas de dégradation mémoire visible sous charge. Pour un usage réel avec plusieurs utilisateurs simultanés légitimes, il faudrait ajuster la limite du rate-limiting **par utilisateur authentifié plutôt que par IP** (plusieurs collègues au bureau derrière la même IP partagent aujourd'hui le même quota) — noté comme piste d'amélioration, hors périmètre du MVP.
 
-## 3. Limites de ce test
+## 3. Budget de performance front-end
+
+### Poids du bundle (build de production)
+
+```bash
+cd frontend
+npm run build
+```
+
+| | Raw size | Estimated transfer (gzip) | Budget (`angular.json`) |
+|---|---:|---:|---:|
+| **Bundle initial** (chargé à la 1ʳᵉ visite) | 260,5 kB | **74,7 kB** | ⚠️ 500 kB / ❌ 1 Mo |
+
+Le bundle initial est **près de 7 fois sous le seuil d'alerte**. Angular applique déjà ce budget à chaque build de production (`angular.json`, configuration `production`) — un dépassement ferait échouer le build (`maximumError`) avant même d'arriver en revue de code.
+
+Le reste de l'application est **découpé par route** (lazy-loading), donc jamais téléchargé tant que l'écran correspondant n'est pas visité :
+
+| Écran | Raw | Transfert estimé |
+|---|---:|---:|
+| Ajouter un fichier (upload) | 9,2 kB | 3,0 kB |
+| Mes fichiers | 6,5 kB | 2,3 kB |
+| Téléchargement public | 6,2 kB | 2,3 kB |
+| Authentification | 6,0 kB | 2,1 kB |
+
+### Audit Lighthouse
+
+```bash
+cd frontend && npm run build
+npx serve -s dist/frontend/browser -l 5005     # ou tout autre serveur statique
+npx lighthouse http://localhost:5005/ --only-categories=performance --chrome-flags="--headless=new"
+```
+
+Exécuté sur le build de production, servi en statique (Lighthouse 13.4.1, Chrome headless) :
+
+| Métrique | Résultat |
+|---|---:|
+| **Score performance** | **89 / 100** |
+| First Contentful Paint | 2,6 s |
+| Largest Contentful Paint | 3,1 s |
+| Total Blocking Time | 83 ms |
+| Cumulative Layout Shift | **0** |
+| Time to Interactive | 3,1 s |
+
+**Analyse** :
+
+- La quasi-totalité de la perte de score vient du **First/Largest Contentful Paint** (poids 62 % et 74 % du score chacun) ; le **Total Blocking Time est quasi parfait** (0,99/1) et le **CLS est nul** — le JavaScript s'exécute vite et sans bloquer le thread principal, et rien ne bouge à l'écran pendant le chargement (pas de saut de mise en page).
+- Lighthouse applique par défaut un **throttling réseau et CPU simulé** (débit mobile dégradé, CPU ralenti ×4) pour évaluer l'expérience sur un terminal moyen — nettement plus sévère qu'un accès direct en local, ce qui explique des temps de peinture (FCP/LCP) plus élevés que ce que l'on observe « à l'œil » en développement.
+- Le serveur statique utilisé pour ce test (`serve`) **ne compresse pas les réponses** : les tailles vues par Lighthouse sur le réseau (ex. ~165 kB pour le plus gros chunk) correspondent aux tailles **brutes**, pas gzip. Derrière un vrai reverse proxy de production (compression gzip/brotli activée), le poids réel transféré se rapprocherait des ~75 kB estimés par Angular CLI ci-dessus, et les temps de peinture seraient donc meilleurs qu'ici.
+- Lighthouse identifie environ **88 Kio de JavaScript non utilisé** sur l'écran audité (probablement du code de framework non sollicité par ce premier écran) — une optimisation possible (fractionner davantage, ou différer certains imports) mais non prioritaire pour ce MVP au vu du score déjà obtenu.
+
+### Pistes d'optimisation identifiées (non réalisées dans le MVP)
+
+- Activer la compression HTTP (gzip/brotli) sur le reverse proxy de production.
+- Réduire encore le JavaScript chargé au premier écran (≈ 88 Kio de marge identifiée par Lighthouse).
+- Ajouter un cache HTTP long-terme sur les fichiers statiques — les noms de fichiers sont déjà hashés (`outputHashing: all`), ce qui le permet sans risque de servir une version obsolète.
+
+## 4. Limites de ce test
 
 - Réalisé en local (poste de développement), pas sur l'infrastructure de production cible — les chiffres absolus ne sont qu'indicatifs.
-- Un seul endpoint testé (téléchargement), conformément au périmètre minimal fixé pour cette étape.
-- Le rate-limiting par IP n'a pas été fondamentalement remis en cause — seulement documenté comme facteur dominant du premier résultat.
+- Un seul endpoint back-end testé (téléchargement) et un seul écran audité côté front (celui de connexion), conformément au périmètre minimal fixé pour cette étape.
+- Le rate-limiting par IP n'a pas été fondamentalement remis en cause côté back — seulement documenté comme facteur dominant du premier résultat.
+- L'audit Lighthouse a été fait sur un serveur statique sans compression : les métriques de poids réseau sont donc pessimistes par rapport à un déploiement de production réel.
