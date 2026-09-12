@@ -48,10 +48,10 @@ k6 run perf/k6-download-test.js
 
 Premier run, **sans rien changer à la configuration de l'application** (limite globale : 100 requêtes/min/IP, `app.module.ts`) :
 
-| Métrique | Valeur |
-|---|---:|
-| Requêtes totales | 880 (21,7/s) |
-| **Échecs (`http_req_failed`)** | **77,0 %** |
+| Métrique                         | Valeur           |
+| -------------------------------- | ----------------:|
+| Requêtes totales                 | 880 (21,7/s)     |
+| **Échecs (`http_req_failed`)**   | **77,0 %**       |
 | `http_req_duration` (moy. / p95) | 8,6 ms / 55,6 ms |
 
 **Analyse** : k6 simule 20 utilisateurs virtuels, mais tous depuis **la même adresse IP** (la machine de test) — exactement le scénario que le rate-limiting est censé bloquer. Les 77 % d'échecs sont des `429 Too Many Requests`, renvoyés en quelques millisecondes (d'où la latence moyenne très basse, trompeuse ici). **Ce n'est pas un problème de performance : c'est la protection anti-abus qui fonctionne comme prévu.** Un test de charge crédible demanderait de simuler plusieurs IP (hors de portée d'un test local en étape 5) ou de mesurer la capacité réelle du serveur séparément — voir ci-dessous.
@@ -60,16 +60,16 @@ Premier run, **sans rien changer à la configuration de l'application** (limite 
 
 Pour mesurer la performance réelle du code (et non celle du garde-fou anti-abus), le même test a été rejoué avec la limite du `ThrottlerModule` temporairement relevée (100 000 au lieu de 100 — **modification locale, non commitée**, revenue à sa valeur d'origine immédiatement après la mesure) :
 
-| Métrique | Valeur |
-|---|---:|
-| Requêtes totales | 764 (18,4/s) |
-| Échecs | **0,0 %** |
-| Débit de données | 2,0 Go reçus (48 Mo/s) |
-| `http_req_duration` — moyenne | 93,3 ms |
-| `http_req_duration` — médiane | 31,5 ms |
-| `http_req_duration` — p90 | 300,0 ms |
-| **`http_req_duration` — p95** | **331,7 ms** |
-| `http_req_duration` — max | 503,5 ms |
+| Métrique                      | Valeur                 |
+| ----------------------------- | ----------------------:|
+| Requêtes totales              | 764 (18,4/s)           |
+| Échecs                        | **0,0 %**              |
+| Débit de données              | 2,0 Go reçus (48 Mo/s) |
+| `http_req_duration` — moyenne | 93,3 ms                |
+| `http_req_duration` — médiane | 31,5 ms                |
+| `http_req_duration` — p90     | 300,0 ms               |
+| **`http_req_duration` — p95** | **331,7 ms**           |
+| `http_req_duration` — max     | 503,5 ms               |
 
 Seuils fixés dans le script (`options.thresholds`) — **tous deux respectés** : moins de 1 % d'échecs, p95 sous 500 ms.
 

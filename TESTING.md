@@ -146,22 +146,34 @@ npm run e2e:open      # idem, avec le navigateur piloté en direct
 
 ### Tests end-to-end (Cypress) — parcours navigateur réel
 
-| Fichier                                | Cas de test                                                                                    | Vérifie                              |
-| --------------------------------------- | ----------------------------------------------------------------------------------------------- | -------------------------------------- |
-| `cypress/e2e/parcours-critique.cy.ts`   | Inscription → téléversement → lien public → téléchargement (contenu du fichier vérifié)         | Parcours utilisateur complet, navigateur réel |
-| `cypress/e2e/suppression.cy.ts`         | Suppression depuis « Mes fichiers » → disparition de la liste → lien devenu invalide             | Suppression bout-en-bout               |
+| Fichier                               | Cas de test                                                                             | Vérifie                                       |
+| ------------------------------------- | --------------------------------------------------------------------------------------- | --------------------------------------------- |
+| `cypress/e2e/parcours-critique.cy.ts` | Inscription → téléversement → lien public → téléchargement (contenu du fichier vérifié) | Parcours utilisateur complet, navigateur réel |
+| `cypress/e2e/suppression.cy.ts`       | Suppression depuis « Mes fichiers » → disparition de la liste → lien devenu invalide    | Suppression bout-en-bout                      |
 
 ## 5. Couverture actuelle
 
-| Projet | Commande | Statements | Branches | Functions | Lines |
-|---|---|:---:|:---:|:---:|:---:|
-| **Back-end** (unitaire, `npm run test:cov`) | Jest | 52.45 % | 55.85 % | 54.38 % | 53.17 % |
-| **Front-end** (unitaire, `npm run test:cov`) | Vitest | **81.66 %** | 78.90 % | 77.02 % | 81.69 % |
+| Projet                                       | Commande | Statements  | Branches | Functions | Lines   |
+| -------------------------------------------- | -------- |:-----------:|:--------:|:---------:|:-------:|
+| **Back-end** (unitaire, `npm run test:cov`)  | Jest     | 52.45 %     | 55.85 %  | 54.38 %   | 53.17 % |
+| **Front-end** (unitaire, `npm run test:cov`) | Vitest   | **81.66 %** | 78.90 %  | 77.02 %   | 81.69 % |
 
-*(rapports HTML : `backend/coverage/lcov-report/index.html` et `frontend/coverage/index.html`, non commités — capture d'écran à joindre à la documentation finale)*
+*Voir rapports HTML ci-dessous.*
 
 **Front-end** : au-dessus du seuil indicatif de 70 % dès les tests unitaires — les composants Angular sont testés avec leur template réel (`TestBed`), ce qui couvre naturellement une grande partie du rendu et de la logique.
 
 **Back-end** : 52 % en ne comptant que les tests unitaires (mocks). Le detail par dossier explique pourquoi : `auth.service.ts`, `files.service.ts`, `jwt.strategy.ts` et `files-cleanup.service.ts` — la logique métier, l'essentiel du risque — sont à ~100 %. Les fichiers à 0 % sont les **contrôleurs, DTO, guards, filtres et intercepteurs** : du câblage HTTP qu'un test unitaire mocké ne peut pas exercer utilement (il faudrait re-simuler tout ce que fait déjà Nest). C'est précisément le rôle des **11 tests d'intégration** (`test/critical-flow.e2e-spec.ts`, `npm run test:e2e`) et des **2 tests end-to-end** (`cypress/`, `npm run e2e`) : ils font tourner ces fichiers pour de vrai, via de vraies requêtes HTTP. Leur exécution n'est pas comptée dans ce rapport `test:cov` (config Jest séparée, sans instrumentation de couverture) — le nombre honnête à retenir n'est donc pas 52 %, mais « logique métier ~100 %, câblage HTTP couvert autrement ».
 
 **Choix assumé** : ne pas ajouter d'outillage supplémentaire (fusion de rapports de couverture entre deux configurations Jest) pour faire remonter artificiellement un seul pourcentage global — cela n'aurait rien changé au code testé, seulement à l'affichage du chiffre.
+
+### 5.1. Rapport de couverture du back-end
+
+Source : rapport HTML `backend/coverage/lcov-report/index.html`.
+
+![Rapport de couverture back-end](docs/etape-5/images/coverage-backend.png)
+
+### 5.2. Rapport de couverture du front-end
+
+Source : rapport HTML `frontend/coverage/index.html`.
+
+![Rapport de couverture front-end](docs/etape-5/images/coverage-frontend.png)
