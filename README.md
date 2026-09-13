@@ -44,6 +44,14 @@ npm start
 
 Ouvre ensuite **http://localhost:4200**. La documentation interactive de l'API (Swagger) est disponible sur **http://localhost:3000/api/docs**.
 
+## Utilisation
+
+1. **Créer un compte** (ou se connecter) sur l'écran d'accueil.
+2. **Téléverser un fichier** : choisir le fichier, définir en option un mot de passe et une durée d'expiration (1 à 7 jours, 7 par défaut), puis valider. Un lien de téléchargement unique est généré.
+3. **Partager le lien** obtenu (ex. `http://localhost:4200/d/<jeton>`) : la personne qui l'ouvre voit les métadonnées du fichier (nom, taille, expiration) et le télécharge — un mot de passe lui est demandé si le fichier en est protégé.
+4. **Suivre ses fichiers** depuis « Mes fichiers » : historique avec filtre par statut (tous / actifs / expirés), accès rapide au lien, et suppression manuelle à tout moment.
+5. **Expiration automatique** : passé le délai choisi à l'envoi, le fichier n'est plus accessible et disparaît du disque (une trace minimale reste visible dans l'onglet « Expiré » de l'historique, purgée après 30 jours).
+
 ## Variables d'environnement (`backend/.env`)
 
 Un modèle est fourni dans `backend/.env.example`. Ne jamais commiter le fichier `.env` réel.

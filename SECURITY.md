@@ -45,6 +45,16 @@ Le scan ci-dessus complète — il ne remplace pas — les protections conçues 
 | Validation stricte des entrées (`ValidationPipe` globale, `whitelist` + `forbidNonWhitelisted`) | `main.ts` |
 | Suppression : réservée au propriétaire du fichier (`403` sinon), vérifié côté serveur | `files.service.ts` |
 
+### XSS, CSRF, injections
+
+Ces trois familles de risques ne sont pas traitées par un mécanisme dédié, mais par des choix d'architecture qui les neutralisent par construction :
+
+| Risque | Pourquoi il est couvert |
+|---|---|
+| **XSS** (injection de script côté client) | Angular échappe automatiquement toute donnée liée dans un template (`{{ }}` / bindings de propriété) — le code ne contourne jamais cette protection : aucun usage de `[innerHTML]` ni de `bypassSecurityTrust*` dans le front-end (vérifié). |
+| **CSRF** (falsification de requête inter-site) | L'API est **stateless** : l'authentification passe par un jeton JWT envoyé manuellement dans l'en-tête `Authorization`, jamais par un cookie de session. Un navigateur n'attache jamais cet en-tête automatiquement lors d'une requête forgée depuis un autre site — la faille CSRF classique (qui exploite l'envoi automatique des cookies) ne s'applique donc pas ici. |
+| **Injection** (NoSQL côté MongoDB) | Toutes les entrées passent par des DTO validés (`class-validator`) avant d'atteindre Mongoose ; aucune requête n'est construite par concaténation de chaînes ou avec l'opérateur `$where` (vérifié) — un objet malformé envoyé à la place d'une chaîne est rejeté par la validation avant même d'atteindre la base. |
+
 ## 3. Suivi
 
 Un nouveau `npm audit` (backend et frontend) est à relancer à chaque mise à jour de dépendances — voir la procédure dans [`MAINTENANCE.md`](./MAINTENANCE.md#5-mise-à-jour-des-dépendances).
