@@ -30,7 +30,7 @@ cd frontend
 npm run start                 # ng serve, http://localhost:4200
 ```
 
-**Ordre recommandé au démarrage** : `mongo` → `backend` → `frontend`. Le back-end échoue silencieusement (routes API en erreur `ECONNREFUSED` côté front) si Mongo n'est pas encore disponible — vérifier `docker ps` en cas de doute.
+**Ordre recommandé au démarrage** : `mongo` → `backend` → `frontend`. Si Mongo n'est pas encore disponible, le back-end **reste bloqué en silence pendant sa propre initialisation** — la console s'arrête juste après « Found 0 errors. Watching for file changes. » (message du compilateur TypeScript, pas de l'application), sans afficher d'erreur, et les routes API échouent côté front en `ECONNREFUSED`. Vérifier `docker ps` en cas de doute, puis `docker compose up -d` avant de relancer `npm run start:dev`.
 
 ## 3. Variables d'environnement (`backend/.env`)
 
