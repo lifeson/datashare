@@ -26,6 +26,14 @@ Prototype de plateforme de transfert sécurisé de fichiers (MVP) — projet ré
 
 ## Démarrage rapide
 
+Un script automatise l'installation (base de données, fichier `.env`, dépendances des deux applications) :
+
+```bash
+./scripts/deploy.sh
+```
+
+Ou étape par étape :
+
 ```bash
 # 1. Base de données
 docker compose up -d
